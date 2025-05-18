@@ -1,0 +1,51 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: api-gateway
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: DEBUG
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+    instances:
+      storageServiceCircuitBreaker:
+        base-config: default
+      analysisServiceCircuitBreaker:
+        base-config: default
+
+
+routes:
+  definitions:
+    - id: storage-service
+      path: /api/storage/**
+      uri: http://localhost:8091
+      circuitBreakerName: storageServiceCircuitBreaker
+      fallbackUri: forward:/fallback/call
+      retries: 3
+    - id: analysis-service
+      path: /api/analysis/**
+      uri: http://localhost:8092
+      circuitBreakerName: analysisServiceCircuitBreaker
+      fallbackUri: forward:/fallback/call
+      retries: 3
